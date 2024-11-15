@@ -229,6 +229,7 @@ func readInput(inputFilePath string) ([]Allocation, string, string, string) {
 func writeTradeUpload(allocations []Allocation) error {
 	file := excelize.NewFile()
 
+	sheetName := "Sheet1"
 	// add headers
 	headers := []string{"Book", "Counterparty", "Primary Security (GUI)",
 		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee"}
@@ -236,30 +237,30 @@ func writeTradeUpload(allocations []Allocation) error {
 
 	// write column headers
 	for i, header := range headers {
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
 	}
 
 	// add rows
 	for i, allocation := range allocations {
 		// insert cell values
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(67)), 2+i), allocation.smid)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(68)), 2+i), allocation.qty)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(67)), 2+i), allocation.smid)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(68)), 2+i), allocation.qty)
 
 		//price
 		percentPrice := allocation.price / 100
 		priceStr := fmt.Sprintf("%f/%d/%s/PC", percentPrice, allocation.smid, allocation.currency)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(69)), 2+i), priceStr)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(69)), 2+i), priceStr)
 
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(70)), 2+i), allocation.tradeDate)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(71)), 2+i), allocation.valueDate)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(72)), 2+i), allocation.currency)
-		file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(73)), 2+i), allocation.backOfficeComments)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(70)), 2+i), allocation.tradeDate)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(71)), 2+i), allocation.valueDate)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(72)), 2+i), allocation.currency)
+		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(73)), 2+i), allocation.backOfficeComments)
 
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
-			file.SetCellValue("Sheet1", fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+			file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
 		}
 	}
 
