@@ -23,36 +23,14 @@ type Allocation struct {
 func main() {
 	// read input file
 	inputFile := getInputFilePath()
-	allocations, err := readInput(inputFile)
+	allocations, inputPerson, deal, projectId := readInput(inputFile)
+
+	err := writeTradeUpload(allocations)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// write output files
-	// a1 := Allocation{}
-	// a1.isin = "ISIN123"
-	// a1.qty = 123
-	// a1.infernoNr = 431930
-	// a1.smid = 583920
-	// a1.book = 1072
-	// a1.price = 103
-	// a1.currency = "SEK"
-	// a1.backOfficeComments = "kommentar"
-	// a1.brokerId = "TAJ"
-	// a1.clientName = "Kundenavn"
-	//
-	// allocations = append(allocations, a1)
-	// allocations = append(allocations, a1)
-	// allocations = append(allocations, a1)
-	// allocations = append(allocations, a1)
-	// allocations = append(allocations, a1)
-
-	err = writeTradeUpload(allocations)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = writeFinance(allocations)
+	err = writeFinance(allocations, inputPerson, deal, projectId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,14 +78,14 @@ func getInputFilePath() string {
 }
 
 // read the data in the input file
-func readInput(inputFilePath string) ([]Allocation, error) {
+func readInput(inputFilePath string) ([]Allocation, string, string, string) {
 	allocations := []Allocation{}
 
 	fmt.Println("Leser input-fil med navn:", filepath.Base(inputFilePath))
 
 	file, err := excelize.OpenFile(inputFilePath)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 	defer file.Close()
 
@@ -116,7 +94,7 @@ func readInput(inputFilePath string) ([]Allocation, error) {
 	// get rows
 	rows, err := file.GetRows(sheetName)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
 
 	// get corp values
@@ -152,18 +130,18 @@ func readInput(inputFilePath string) ([]Allocation, error) {
 	if err != nil {
 		log.Fatal("Kunne ikke hente Settlement currency\n", err)
 	}
-	// inputPerson, err := file.GetCellValue(sheetName, "B10")
-	// if err != nil {
-	// 	log.Fatal("Kunne ikke hente Input person\n", err)
-	// }
-	// deal, err := file.GetCellValue(sheetName, "B11")
-	// if err != nil {
-	// 	log.Fatal("Kunne ikke hente Deal\n", err)
-	// }
-	// projectId, err := file.GetCellValue(sheetName, "B12")
-	// if err != nil {
-	// 	log.Fatal("Kunne ikke hente ProjectID\n", err)
-	// }
+	inputPerson, err := file.GetCellValue(sheetName, "B10")
+	if err != nil {
+		log.Fatal("Kunne ikke hente Input person\n", err)
+	}
+	deal, err := file.GetCellValue(sheetName, "B11")
+	if err != nil {
+		log.Fatal("Kunne ikke hente Deal\n", err)
+	}
+	projectId, err := file.GetCellValue(sheetName, "B12")
+	if err != nil {
+		log.Fatal("Kunne ikke hente ProjectID\n", err)
+	}
 
 	// get settlement values
 	book, err := file.GetCellValue(sheetName, "E2")
@@ -187,7 +165,7 @@ func readInput(inputFilePath string) ([]Allocation, error) {
 		}
 		newAlloc.rullPrice, err = strconv.ParseFloat(rullPrice, 64)
 		if err != nil {
-			return nil, err
+			log.Fatal("Kunne ikke konvertere Rull price\n", err)
 		}
 		newAlloc.tradeDate, err = time.Parse(timeLayout, tradeDate)
 		if err != nil {
@@ -244,7 +222,7 @@ func readInput(inputFilePath string) ([]Allocation, error) {
 		allocations = append(allocations, newAlloc)
 	}
 
-	return allocations, err
+	return allocations, inputPerson, deal, projectId
 }
 
 // create the Excel file for Inferno trade upload
@@ -295,7 +273,7 @@ func writeTradeUpload(allocations []Allocation) error {
 }
 
 // insert data to Excel file with finance report
-func writeFinance(allocations []Allocation) error {
+func writeFinance(allocations []Allocation, inputPerson string, deal string, projectId string) error {
 	file, err := excelize.OpenFile("output/finance.xlsx")
 	if err != nil {
 		return err
@@ -326,6 +304,12 @@ func writeFinance(allocations []Allocation) error {
 	}
 
 	// insert values to input table
+	file.SetCellValue(sheetName, "B1", inputPerson)
+	file.SetCellValue(sheetName, "B2", deal)
+	file.SetCellValue(sheetName, "B3", projectId)
+	file.SetCellValue(sheetName, "B4", allocations[0].isin)
+	file.SetCellValue(sheetName, "B5", allocations[0].tradeDate)
+	file.SetCellValue(sheetName, "B6", allocations[0].currency)
 
 	// add allocation rows
 	for i, alloc := range allocations {
@@ -336,6 +320,7 @@ func writeFinance(allocations []Allocation) error {
 		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", "I", 2+i), alloc.financeQty)
 	}
 
+	// update all formulas
 	err = file.UpdateLinkedValue()
 	if err != nil {
 		return err
