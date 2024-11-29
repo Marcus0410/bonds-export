@@ -184,10 +184,6 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Price\n", err)
 		}
-		// newAlloc.rullPrice, err = strconv.ParseFloat(rullPrice, 64)
-		// if err != nil {
-		// 	log.Fatal("Kunne ikke konvertere Rull price\n", err)
-		// }
 		newAlloc.tradeDate, err = time.Parse(timeLayout, tradeDate)
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Trade date\n", err)
@@ -235,13 +231,12 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		allocations = append(allocations, newAlloc)
 
 		// add rull allocation
-		rullQty, err := strconv.Atoi(strings.ReplaceAll(row[2], ",", ""))
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere rull allocation\n", err)
-		}
-		if rullQty > 0 {
+		if row[2] != "" && row[2] != "0" {
 			newRullAlloc := newAlloc
-			newRullAlloc.qty = rullQty
+			newRullAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[2], ",", ""))
+			if err != nil {
+				log.Fatal("Kunne ikke konvertere rull allocation\n", err)
+			}
 			newRullAlloc.isin = rullIsin
 			newRullAlloc.smid, err = strconv.Atoi(rullSmid)
 			if err != nil {
@@ -255,13 +250,12 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		}
 
 		// add temp allocation
-		tempQty, err := strconv.Atoi(strings.ReplaceAll(row[3], ",", ""))
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere temp allocation\n", err)
-		}
-		if tempQty > 0 {
+		if row[3] != "" && row[3] != "0" {
 			newTempAlloc := newAlloc
-			newTempAlloc.qty = tempQty
+			newTempAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[3], ",", ""))
+			if err != nil {
+				log.Fatal("Kunne ikke konvertere temp allocation\n", err)
+			}
 			newTempAlloc.isin = tempIsin
 			newTempAlloc.smid, err = strconv.Atoi(tempSmid)
 			if err != nil {
