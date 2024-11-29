@@ -155,6 +155,18 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	if err != nil {
 		log.Fatal("Kunne ikke hente Book\n", err)
 	}
+	smid, err := file.GetCellValue(sheetName, "E3")
+	if err != nil {
+		log.Fatal("Kunne ikke hente SMID\n", err)
+	}
+	rullSmid, err := file.GetCellValue(sheetName, "E4")
+	if err != nil {
+		log.Fatal("Kunne ikke hente Rull SMID\n", err)
+	}
+	tempSmid, err := file.GetCellValue(sheetName, "E5")
+	if err != nil {
+		log.Fatal("Kunne ikke hente Temp SMID\n", err)
+	}
 
 	timeLayout := "01-02-06" // Day.Month.Year
 
@@ -164,6 +176,10 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 
 		// corp values
 		newAlloc.isin = isin
+		newAlloc.smid, err = strconv.Atoi(smid)
+		if err != nil {
+			log.Fatal("Kunne ikke konvertere SMID\n", err)
+		}
 		newAlloc.price, err = strconv.ParseFloat(price, 64)
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Price\n", err)
@@ -227,6 +243,10 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 			newRullAlloc := newAlloc
 			newRullAlloc.qty = rullQty
 			newRullAlloc.isin = rullIsin
+			newRullAlloc.smid, err = strconv.Atoi(rullSmid)
+			if err != nil {
+				log.Fatal("Kunne ikke konvertere Rull SMID\n", err)
+			}
 			newRullAlloc.price, err = strconv.ParseFloat(rullPrice, 64)
 			if err != nil {
 				log.Fatal("Kunne ikke konvertere Rull price\n", err)
@@ -243,6 +263,10 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 			newTempAlloc := newAlloc
 			newTempAlloc.qty = tempQty
 			newTempAlloc.isin = tempIsin
+			newTempAlloc.smid, err = strconv.Atoi(tempSmid)
+			if err != nil {
+				log.Fatal("Kunne ikke konvertere Temp SMID\n", err)
+			}
 			newTempAlloc.price, err = strconv.ParseFloat(tempPrice, 64)
 			if err != nil {
 				log.Fatal("Kunne ikke konvertere Rull price\n", err)
