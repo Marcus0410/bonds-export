@@ -14,18 +14,18 @@ import (
 )
 
 type Allocation struct {
-	isin, currency, backOfficeComments, clientName, brokerId, tempIsin, rullIsin string
-	qty, infernoNr, smid, book, financeQty, rullQty, tempQty                     int
-	tradeDate, valueDate                                                         time.Time
-	commitmentFee, price, rullPrice                                              float64
+	isin, currency, backOfficeComments, clientName, brokerId string
+	qty, infernoNr, smid, book, financeQty                   int
+	tradeDate, valueDate                                     time.Time
+	commitmentFee, price                                     float64
 }
 
 func main() {
 	// read input file
 	inputFile := getInputFilePath()
-	allocations, inputPerson, deal, projectId := readInput(inputFile)
+	allocations, rullAllocations, tempAllocations, inputPerson, deal, projectId := readInput(inputFile)
 
-	err := writeTradeUpload(allocations)
+	err := writeTradeUpload(allocations, rullAllocations, tempAllocations)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,8 +78,11 @@ func getInputFilePath() string {
 }
 
 // read the data in the input file
-func readInput(inputFilePath string) ([]Allocation, string, string, string) {
+// returns allocations, rull allocations, temp allocations,
+func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, string, string, string) {
 	allocations := []Allocation{}
+	rullAllocations := []Allocation{}
+	tempAllocations := []Allocation{}
 
 	fmt.Println("Leser input-fil med navn:", filepath.Base(inputFilePath))
 
@@ -118,27 +121,31 @@ func readInput(inputFilePath string) ([]Allocation, string, string, string) {
 	if err != nil {
 		log.Fatal("Kunne ikke hente Rull price\n", err)
 	}
-	tradeDate, err := file.GetCellValue(sheetName, "B7")
+	tempPrice, err := file.GetCellValue(sheetName, "B7")
+	if err != nil {
+		log.Fatal("Kunne ikke hente Temp price\n", err)
+	}
+	tradeDate, err := file.GetCellValue(sheetName, "B8")
 	if err != nil {
 		log.Fatal("Kunne ikke hente Trade date\n", err)
 	}
-	valueDate, err := file.GetCellValue(sheetName, "B8")
+	valueDate, err := file.GetCellValue(sheetName, "B9")
 	if err != nil {
 		log.Fatal("Kunne ikke hente Value date\n", err)
 	}
-	currency, err := file.GetCellValue(sheetName, "B9")
+	currency, err := file.GetCellValue(sheetName, "B10")
 	if err != nil {
 		log.Fatal("Kunne ikke hente Settlement currency\n", err)
 	}
-	inputPerson, err := file.GetCellValue(sheetName, "B10")
+	inputPerson, err := file.GetCellValue(sheetName, "B11")
 	if err != nil {
 		log.Fatal("Kunne ikke hente Input person\n", err)
 	}
-	deal, err := file.GetCellValue(sheetName, "B11")
+	deal, err := file.GetCellValue(sheetName, "B12")
 	if err != nil {
 		log.Fatal("Kunne ikke hente Deal\n", err)
 	}
-	projectId, err := file.GetCellValue(sheetName, "B12")
+	projectId, err := file.GetCellValue(sheetName, "B13")
 	if err != nil {
 		log.Fatal("Kunne ikke hente ProjectID\n", err)
 	}
@@ -152,21 +159,19 @@ func readInput(inputFilePath string) ([]Allocation, string, string, string) {
 	timeLayout := "01-02-06" // Day.Month.Year
 
 	// loop through allocations
-	for _, row := range rows[14:] {
+	for _, row := range rows[16:] {
 		var newAlloc Allocation
 
 		// corp values
 		newAlloc.isin = isin
-		newAlloc.tempIsin = tempIsin
-		newAlloc.rullIsin = rullIsin
 		newAlloc.price, err = strconv.ParseFloat(price, 64)
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Price\n", err)
 		}
-		newAlloc.rullPrice, err = strconv.ParseFloat(rullPrice, 64)
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere Rull price\n", err)
-		}
+		// newAlloc.rullPrice, err = strconv.ParseFloat(rullPrice, 64)
+		// if err != nil {
+		// 	log.Fatal("Kunne ikke konvertere Rull price\n", err)
+		// }
 		newAlloc.tradeDate, err = time.Parse(timeLayout, tradeDate)
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Trade date\n", err)
@@ -189,16 +194,6 @@ func readInput(inputFilePath string) ([]Allocation, string, string, string) {
 			log.Fatal("Kunne ikke konvertere allocation quantity\n", err)
 		}
 
-		newAlloc.rullQty, err = strconv.Atoi(row[2])
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere rull allocation\n", err)
-		}
-
-		newAlloc.tempQty, err = strconv.Atoi(row[3])
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere temp allocation\n", err)
-		}
-
 		newAlloc.infernoNr, err = strconv.Atoi(row[4])
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Inferno nr\n", err)
@@ -219,48 +214,137 @@ func readInput(inputFilePath string) ([]Allocation, string, string, string) {
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Finance rapportering\n", err)
 		}
+
+		// add main allocation to allocations
 		allocations = append(allocations, newAlloc)
+
+		// add rull allocation
+		rullQty, err := strconv.Atoi(strings.ReplaceAll(row[2], ",", ""))
+		if err != nil {
+			log.Fatal("Kunne ikke konvertere rull allocation\n", err)
+		}
+		if rullQty > 0 {
+			newRullAlloc := newAlloc
+			newRullAlloc.qty = rullQty
+			newRullAlloc.isin = rullIsin
+			newRullAlloc.price, err = strconv.ParseFloat(rullPrice, 64)
+			if err != nil {
+				log.Fatal("Kunne ikke konvertere Rull price\n", err)
+			}
+			rullAllocations = append(rullAllocations, newRullAlloc)
+		}
+
+		// add temp allocation
+		tempQty, err := strconv.Atoi(strings.ReplaceAll(row[2], ",", ""))
+		if err != nil {
+			log.Fatal("Kunne ikke konvertere temp allocation\n", err)
+		}
+		if tempQty > 0 {
+			newTempAlloc := newAlloc
+			newTempAlloc.qty = tempQty
+			newTempAlloc.isin = tempIsin
+			newTempAlloc.price, err = strconv.ParseFloat(tempPrice, 64)
+			if err != nil {
+				log.Fatal("Kunne ikke konvertere Rull price\n", err)
+			}
+			tempAllocations = append(tempAllocations, newTempAlloc)
+		}
 	}
 
-	return allocations, inputPerson, deal, projectId
+	return allocations, rullAllocations, tempAllocations, inputPerson, deal, projectId
 }
 
 // create the Excel file for Inferno trade upload
-func writeTradeUpload(allocations []Allocation) error {
+func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, tempAllocations []Allocation) error {
 	file := excelize.NewFile()
 
-	sheetName := "Sheet1"
+	allocationSheet := "Allocations"
+	rullSheet := "Rull allocations"
+	tempSheet := "Temp allocations"
+
+	// create sheets
+	file.SetSheetName("Sheet1", allocationSheet)
+	file.NewSheet(rullSheet)
+	file.NewSheet(tempSheet)
+
 	// add headers
 	headers := []string{"Book", "Counterparty", "Primary Security (GUI)",
 		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee"}
-	//
 
 	// write column headers
 	for i, header := range headers {
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
 	}
 
-	// add rows
+	// add main allocations
 	for i, allocation := range allocations {
 		// insert cell values
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(67)), 2+i), allocation.smid)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(68)), 2+i), allocation.qty)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(67)), 2+i), allocation.smid)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(68)), 2+i), -allocation.qty)
 
 		//price
 		percentPrice := allocation.price / 100
 		priceStr := fmt.Sprintf("%f/%d/%s/PC", percentPrice, allocation.smid, allocation.currency)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(69)), 2+i), priceStr)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(69)), 2+i), priceStr)
 
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(70)), 2+i), allocation.tradeDate)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(71)), 2+i), allocation.valueDate)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(72)), 2+i), allocation.currency)
-		file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(73)), 2+i), allocation.backOfficeComments)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(70)), 2+i), allocation.tradeDate)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(71)), 2+i), allocation.valueDate)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(72)), 2+i), allocation.currency)
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(73)), 2+i), allocation.backOfficeComments)
 
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
-			file.SetCellValue(sheetName, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+		}
+	}
+	// add rull allocations
+	for i, allocation := range rullAllocations {
+		// insert cell values
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(67)), 2+i), allocation.smid)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(68)), 2+i), allocation.qty)
+
+		//price
+		percentPrice := allocation.price / 100
+		priceStr := fmt.Sprintf("%f/%d/%s/PC", percentPrice, allocation.smid, allocation.currency)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(69)), 2+i), priceStr)
+
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(70)), 2+i), allocation.tradeDate)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(71)), 2+i), allocation.valueDate)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(72)), 2+i), allocation.currency)
+		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(73)), 2+i), allocation.backOfficeComments)
+
+		// dont insert 0 if no commitment fee, it should be blank instead
+		if allocation.commitmentFee != 0 {
+			file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+		}
+	}
+	// add temp allocations
+	for i, allocation := range tempAllocations {
+		// insert cell values
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(67)), 2+i), allocation.smid)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(68)), 2+i), -allocation.qty)
+
+		//price
+		percentPrice := allocation.price / 100
+		priceStr := fmt.Sprintf("%f/%d/%s/PC", percentPrice, allocation.smid, allocation.currency)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(69)), 2+i), priceStr)
+
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(70)), 2+i), allocation.tradeDate)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(71)), 2+i), allocation.valueDate)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(72)), 2+i), allocation.currency)
+		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(73)), 2+i), allocation.backOfficeComments)
+
+		// dont insert 0 if no commitment fee, it should be blank instead
+		if allocation.commitmentFee != 0 {
+			file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
 		}
 	}
 
