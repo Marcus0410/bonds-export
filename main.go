@@ -215,7 +215,7 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 			log.Fatal("Kunne ikke konvertere Inferno nr\n", err)
 		}
 
-		newAlloc.brokerId = row[5]
+		newAlloc.brokerId = row[9]
 
 		// if UW FEE is not empty
 		if strings.TrimSpace(row[6]) != "" {
@@ -255,7 +255,7 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		}
 
 		// add temp allocation
-		tempQty, err := strconv.Atoi(strings.ReplaceAll(row[2], ",", ""))
+		tempQty, err := strconv.Atoi(strings.ReplaceAll(row[3], ",", ""))
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere temp allocation\n", err)
 		}
