@@ -14,10 +14,10 @@ import (
 )
 
 type Allocation struct {
-	isin, currency, backOfficeComments, clientName, brokerId string
-	qty, infernoNr, smid, book, financeQty                   int
-	tradeDate, valueDate                                     time.Time
-	commitmentFee, price                                     float64
+	isin, currency, backOfficeComments, clientName, brokerId, accType string
+	qty, infernoNr, smid, book, financeQty                            int
+	tradeDate, valueDate                                              time.Time
+	commitmentFee, price                                              float64
 }
 
 func main() {
@@ -83,6 +83,19 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	allocations := []Allocation{}
 	rullAllocations := []Allocation{}
 	tempAllocations := []Allocation{}
+
+	// column indicies, this is used for getting allocation values from Excel
+	colInferno := 0
+	colInvestor := 1
+	colAccType := 2
+	colQty := 3
+	colRullQty := 4
+	colTempQty := 5
+	// colBroker := 6 currently not needed
+	colFee := 7
+	colComment := 8
+	colFinance := 9
+	colBrokerId := 10
 
 	fmt.Println("Leser input-fil med navn:", filepath.Base(inputFilePath))
 
@@ -200,29 +213,31 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 			log.Fatal("Kunne ikke konvertere Book\n", err)
 		}
 
-		newAlloc.clientName = row[0]
-		newAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[1], ",", ""))
+		newAlloc.clientName = row[colInvestor]
+		newAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[colQty], ",", ""))
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere allocation quantity\n", err)
 		}
 
-		newAlloc.infernoNr, err = strconv.Atoi(row[4])
+		newAlloc.infernoNr, err = strconv.Atoi(row[colInferno])
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Inferno nr\n", err)
 		}
 
-		newAlloc.brokerId = row[9]
+		newAlloc.accType = row[colAccType]
+
+		newAlloc.brokerId = row[colBrokerId]
 
 		// if UW FEE is not empty
-		if strings.TrimSpace(row[6]) != "" {
-			newAlloc.commitmentFee, err = strconv.ParseFloat(row[6], 64)
+		if strings.TrimSpace(row[colFee]) != "" {
+			newAlloc.commitmentFee, err = strconv.ParseFloat(row[colFee], 64)
 			if err != nil {
 				log.Fatal("Kunne ikke konvertere UW FEE\n", err)
 			}
 		}
 
-		newAlloc.backOfficeComments = row[7]
-		newAlloc.financeQty, err = strconv.Atoi(strings.ReplaceAll(row[8], ",", ""))
+		newAlloc.backOfficeComments = row[colComment]
+		newAlloc.financeQty, err = strconv.Atoi(strings.ReplaceAll(row[colFinance], ",", ""))
 		if err != nil {
 			log.Fatal("Kunne ikke konvertere Finance rapportering\n", err)
 		}
@@ -231,9 +246,9 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		allocations = append(allocations, newAlloc)
 
 		// add rull allocation
-		if row[2] != "" && row[2] != "0" {
+		if row[colRullQty] != "" && row[colRullQty] != "0" {
 			newRullAlloc := newAlloc
-			newRullAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[2], ",", ""))
+			newRullAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[colRullQty], ",", ""))
 			if err != nil {
 				log.Fatal("Kunne ikke konvertere rull allocation\n", err)
 			}
@@ -250,9 +265,9 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		}
 
 		// add temp allocation
-		if row[3] != "" && row[3] != "0" {
+		if row[colTempQty] != "" && row[colTempQty] != "0" {
 			newTempAlloc := newAlloc
-			newTempAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[3], ",", ""))
+			newTempAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[colTempQty], ",", ""))
 			if err != nil {
 				log.Fatal("Kunne ikke konvertere temp allocation\n", err)
 			}
@@ -298,6 +313,10 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 	// add main allocations
 	for i, allocation := range allocations {
+		// if account type is Pot, do not include
+		if strings.ToLower(strings.TrimSpace(allocation.accType)) == "pot" {
+			continue
+		}
 		// insert cell values
 		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
 		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
