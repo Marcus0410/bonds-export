@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
+	//"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,19 +27,19 @@ func main() {
 
 	err := writeTradeUpload(allocations, rullAllocations, tempAllocations)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 
 	err = writeFinance(allocations, inputPerson, deal, projectId)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 
 	fmt.Println("Output filene har blitt produsert!\nDu kan avslutte programmet.")
 	reader := bufio.NewReader(os.Stdin)
 	_, err = reader.ReadString('\n')
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 }
 
@@ -68,11 +68,11 @@ func getInputFilePath() string {
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 
 	if inputFilePath == "" {
-		log.Fatal("Fant ingen fil i input-mappen.")
+		fmt.Println("Fant ingen fil i input-mappen.")
 	}
 	return inputFilePath
 }
@@ -91,7 +91,7 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	colQty := 3
 	colRullQty := 4
 	colTempQty := 5
-	// colBroker := 6 currently not needed
+	colBroker := 6
 	colFee := 7
 	colComment := 8
 	colFinance := 9
@@ -101,7 +101,7 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 
 	file, err := excelize.OpenFile(inputFilePath)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	defer file.Close()
 
@@ -110,178 +110,148 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	// get rows
 	rows, err := file.GetRows(sheetName)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 
 	// get corp values
 	isin, err := file.GetCellValue(sheetName, "B2")
-	if err != nil {
-		log.Fatal("Kunne ikke hente ISIN\n", err)
-	}
 	tempIsin, err := file.GetCellValue(sheetName, "B3")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Temp ISIN\n", err)
-	}
 	rullIsin, err := file.GetCellValue(sheetName, "B4")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Rull ISIN\n", err)
-	}
 	price, err := file.GetCellValue(sheetName, "B5")
-	if err != nil {
-		log.Fatal("Kunne ikke hente price\n", err)
-	}
 	rullPrice, err := file.GetCellValue(sheetName, "B6")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Rull price\n", err)
-	}
 	tempPrice, err := file.GetCellValue(sheetName, "B7")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Temp price\n", err)
-	}
 	tradeDate, err := file.GetCellValue(sheetName, "B8")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Trade date\n", err)
-	}
 	valueDate, err := file.GetCellValue(sheetName, "B9")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Value date\n", err)
-	}
 	currency, err := file.GetCellValue(sheetName, "B10")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Settlement currency\n", err)
-	}
 	inputPerson, err := file.GetCellValue(sheetName, "B11")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Input person\n", err)
-	}
 	deal, err := file.GetCellValue(sheetName, "B12")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Deal\n", err)
-	}
 	projectId, err := file.GetCellValue(sheetName, "B13")
+
 	if err != nil {
-		log.Fatal("Kunne ikke hente ProjectID\n", err)
+		fmt.Println("Kunne ikke hente en verdi fra Corp-tabellen\n", err)
 	}
 
 	// get settlement values
 	book, err := file.GetCellValue(sheetName, "E2")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Book\n", err)
-	}
 	smid, err := file.GetCellValue(sheetName, "E3")
-	if err != nil {
-		log.Fatal("Kunne ikke hente SMID\n", err)
-	}
 	rullSmid, err := file.GetCellValue(sheetName, "E4")
-	if err != nil {
-		log.Fatal("Kunne ikke hente Rull SMID\n", err)
-	}
 	tempSmid, err := file.GetCellValue(sheetName, "E5")
 	if err != nil {
-		log.Fatal("Kunne ikke hente Temp SMID\n", err)
+		fmt.Println("Kunne ikke hente en verdi fra Settlement-tabellen\n", err)
 	}
 
 	timeLayout := "01-02-06" // Day.Month.Year
 
-	// loop through allocations
-	for _, row := range rows[16:] {
+	for rowIndex, row := range rows[16:] {
 		var newAlloc Allocation
 
-		// corp values
+		// add corp values
 		newAlloc.isin = isin
-		newAlloc.smid, err = strconv.Atoi(smid)
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere SMID\n", err)
-		}
 		newAlloc.price, err = strconv.ParseFloat(price, 64)
 		if err != nil {
-			log.Fatal("Kunne ikke konvertere Price\n", err)
+			fmt.Println("Kunne ikke konvertere Price i celle: B5\n", err)
 		}
 		newAlloc.tradeDate, err = time.Parse(timeLayout, tradeDate)
 		if err != nil {
-			log.Fatal("Kunne ikke konvertere Trade date\n", err)
+			fmt.Println("Kunne ikke konvertere Trade date i celle: B8\n", err)
 		}
 		newAlloc.valueDate, err = time.Parse(timeLayout, valueDate)
 		if err != nil {
-			log.Fatal("Kunne ikke konvertere Value date\n", err)
+			fmt.Println("Kunne ikke konvertere Value date i celle: B9\n", err)
 		}
 		newAlloc.currency = currency
 
-		// settlement values
+		// add settlement values
 		newAlloc.book, err = strconv.Atoi(book)
 		if err != nil {
-			log.Fatal("Kunne ikke konvertere Book\n", err)
+			fmt.Println("Kunne ikke konvertere Book i celle: E2\n", err)
 		}
-
-		newAlloc.clientName = row[colInvestor]
-		newAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[colQty], ",", ""))
+		newAlloc.smid, err = strconv.Atoi(smid)
 		if err != nil {
-			log.Fatal("Kunne ikke konvertere allocation quantity\n", err)
+			fmt.Println("Kunne ikke konvertere SMID i celle: E3\n", err)
 		}
 
-		newAlloc.infernoNr, err = strconv.Atoi(row[colInferno])
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere Inferno nr\n", err)
-		}
+		// get values from rows
+		for cellIndex, cell := range row {
+			cell = strings.TrimSpace(cell)
+			cellName := string(rune(65+cellIndex)) + strconv.Itoa(17+rowIndex) // example: B2
 
-		newAlloc.accType = row[colAccType]
-
-		newAlloc.brokerId = row[colBrokerId]
-
-		// if UW FEE is not empty
-		if strings.TrimSpace(row[colFee]) != "" {
-			newAlloc.commitmentFee, err = strconv.ParseFloat(row[colFee], 64)
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere UW FEE\n", err)
+			switch cellIndex {
+			case colInferno:
+				newAlloc.infernoNr, err = strconv.Atoi(cell)
+			case colInvestor:
+				newAlloc.clientName = cell
+			case colAccType:
+				if strings.ToLower(cell) != "abg" && strings.ToLower(cell) != "pot" {
+					fmt.Println("Account Type må være 'ABG' eller 'Pot', men fant '" + cell + "' i celle: " + cellName)
+				}
+				newAlloc.accType = cell
+			case colQty:
+				qty := strings.ReplaceAll(cell, ",", "")
+				newAlloc.qty, err = strconv.Atoi(qty)
+				if err != nil {
+					fmt.Println("Kunne ikke konvertere Allocation i celle:", cellName+"\n", err)
+				}
+			case colRullQty:
+				if cell != "" && cell != "0" {
+					newRullAlloc := newAlloc
+					newRullAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(cell, ",", ""))
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere rull allocation i celle:", cellName+"\n", err)
+					}
+					newRullAlloc.isin = rullIsin
+					newRullAlloc.smid, err = strconv.Atoi(rullSmid)
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere Rull SMID\n", err)
+					}
+					newRullAlloc.price, err = strconv.ParseFloat(rullPrice, 64)
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere Rull price\n", err)
+					}
+					rullAllocations = append(rullAllocations, newRullAlloc)
+				}
+			case colTempQty:
+				if cell != "" && cell != "0" {
+					newTempAlloc := newAlloc
+					newTempAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(cell, ",", ""))
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere temp allocation i celle:", cellName+"\n", err)
+					}
+					newTempAlloc.isin = tempIsin
+					newTempAlloc.smid, err = strconv.Atoi(tempSmid)
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere Temp SMID\n", err)
+					}
+					newTempAlloc.price, err = strconv.ParseFloat(tempPrice, 64)
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere Rull price\n", err)
+					}
+					tempAllocations = append(tempAllocations, newTempAlloc)
+				}
+			case colBroker:
+				continue
+			case colFee:
+				if cell != "" {
+					newAlloc.commitmentFee, err = strconv.ParseFloat(cell, 64)
+					if err != nil {
+						fmt.Println("Kunne ikke konvertere UW fee i celle: "+cellName+"\n", err)
+					}
+				}
+			case colComment:
+				newAlloc.backOfficeComments = cell
+			case colFinance:
+				financeQty := strings.ReplaceAll(cell, ",", "")
+				newAlloc.financeQty, err = strconv.Atoi(financeQty)
+				if err != nil {
+					fmt.Println("Kunne ikke konvertere Finance rapportering i celle: "+cellName+"\n", err)
+				}
+			case colBrokerId:
+				newAlloc.brokerId = cell
 			}
 		}
 
-		newAlloc.backOfficeComments = row[colComment]
-		newAlloc.financeQty, err = strconv.Atoi(strings.ReplaceAll(row[colFinance], ",", ""))
-		if err != nil {
-			log.Fatal("Kunne ikke konvertere Finance rapportering\n", err)
-		}
-
-		// add main allocation to allocations
+		// add the new allocation to allocation list
 		allocations = append(allocations, newAlloc)
-
-		// add rull allocation
-		if row[colRullQty] != "" && row[colRullQty] != "0" {
-			newRullAlloc := newAlloc
-			newRullAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[colRullQty], ",", ""))
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere rull allocation\n", err)
-			}
-			newRullAlloc.isin = rullIsin
-			newRullAlloc.smid, err = strconv.Atoi(rullSmid)
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere Rull SMID\n", err)
-			}
-			newRullAlloc.price, err = strconv.ParseFloat(rullPrice, 64)
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere Rull price\n", err)
-			}
-			rullAllocations = append(rullAllocations, newRullAlloc)
-		}
-
-		// add temp allocation
-		if row[colTempQty] != "" && row[colTempQty] != "0" {
-			newTempAlloc := newAlloc
-			newTempAlloc.qty, err = strconv.Atoi(strings.ReplaceAll(row[colTempQty], ",", ""))
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere temp allocation\n", err)
-			}
-			newTempAlloc.isin = tempIsin
-			newTempAlloc.smid, err = strconv.Atoi(tempSmid)
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere Temp SMID\n", err)
-			}
-			newTempAlloc.price, err = strconv.ParseFloat(tempPrice, 64)
-			if err != nil {
-				log.Fatal("Kunne ikke konvertere Rull price\n", err)
-			}
-			tempAllocations = append(tempAllocations, newTempAlloc)
-		}
 	}
 
 	return allocations, rullAllocations, tempAllocations, inputPerson, deal, projectId
@@ -388,7 +358,7 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	// save file
 	err := file.SaveAs("output/tradeUpload.xlsx")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 
 	return err
