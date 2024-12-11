@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	//"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -56,8 +55,9 @@ func getInputFilePath() string {
 			return err
 		}
 
-		// if this is a file
-		if !info.IsDir() && filepath.Ext(path) == ".xlsx" {
+		// if this is a .xlsx file
+		if !info.IsDir() && filepath.Ext(path) == ".xlsx" && filepath.Base(path)[0] != '~' {
+
 			// if this file was modified later, this is the current latest modified file
 			if info.ModTime().After(inputFileModTime) {
 				inputFileModTime = info.ModTime()
@@ -173,6 +173,10 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 
 		// get values from rows
 		for cellIndex, cell := range row {
+			// skip empty cells
+			if cell == "" {
+				continue
+			}
 			cell = strings.TrimSpace(cell)
 			cellName := string(rune(65+cellIndex)) + strconv.Itoa(17+rowIndex) // example: B2
 
@@ -253,6 +257,15 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		// add the new allocation to allocation list
 		allocations = append(allocations, newAlloc)
 	}
+
+	// remove all allocations that dont have inferno nr
+	var filteredAllocations []Allocation // allocations without empty elements
+	for _, alloc := range allocations {
+		if alloc.infernoNr != 0 {
+			filteredAllocations = append(filteredAllocations, alloc)
+		}
+	}
+	allocations = filteredAllocations
 
 	return allocations, rullAllocations, tempAllocations, inputPerson, deal, projectId
 }
