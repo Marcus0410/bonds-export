@@ -13,10 +13,10 @@ import (
 )
 
 type Allocation struct {
-	isin, currency, backOfficeComments, clientName, brokerId, accType string
-	qty, infernoNr, smid, book, financeQty                            int
-	tradeDate, valueDate                                              time.Time
-	commitmentFee, price                                              float64
+	isin, currency, backOfficeComments, clientName, brokerId, bAndD string
+	qty, infernoNr, smid, book, financeQty                          int
+	tradeDate, valueDate                                            time.Time
+	commitmentFee, price                                            float64
 }
 
 func main() {
@@ -87,7 +87,7 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	// column indicies, this is used for getting allocation values from Excel
 	colInferno := 0
 	colInvestor := 1
-	colAccType := 2
+	colBandD := 2
 	colQty := 3
 	colRullQty := 4
 	colTempQty := 5
@@ -122,7 +122,6 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	tempPrice, err := file.GetCellValue(sheetName, "B7")
 	tradeDate, err := file.GetCellValue(sheetName, "B8")
 	valueDate, err := file.GetCellValue(sheetName, "B9")
-	currency, err := file.GetCellValue(sheetName, "B10")
 	inputPerson, err := file.GetCellValue(sheetName, "B11")
 	deal, err := file.GetCellValue(sheetName, "B12")
 	projectId, err := file.GetCellValue(sheetName, "B13")
@@ -136,11 +135,15 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 	smid, err := file.GetCellValue(sheetName, "E3")
 	rullSmid, err := file.GetCellValue(sheetName, "E4")
 	tempSmid, err := file.GetCellValue(sheetName, "E5")
+	currency, err := file.GetCellValue(sheetName, "F3")
+	rullCurrency, err := file.GetCellValue(sheetName, "F4")
+	tempCurrency, err := file.GetCellValue(sheetName, "F5")
 	if err != nil {
 		fmt.Println("Kunne ikke hente en verdi fra Settlement-tabellen\n", err)
 	}
 
-	timeLayout := "01-02-06" // Day.Month.Year
+	tradeDateLayout := "1/2/06 15:04"
+	valueDateLayout := "01-02-06" // Day.Month.Year
 
 	for rowIndex, row := range rows[16:] {
 		var newAlloc Allocation
@@ -151,11 +154,11 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		if err != nil {
 			fmt.Println("Kunne ikke konvertere Price i celle: B5\n", err)
 		}
-		newAlloc.tradeDate, err = time.Parse(timeLayout, tradeDate)
+		newAlloc.tradeDate, err = time.Parse(tradeDateLayout, tradeDate)
 		if err != nil {
 			fmt.Println("Kunne ikke konvertere Trade date i celle: B8\n", err)
 		}
-		newAlloc.valueDate, err = time.Parse(timeLayout, valueDate)
+		newAlloc.valueDate, err = time.Parse(valueDateLayout, valueDate)
 		if err != nil {
 			fmt.Println("Kunne ikke konvertere Value date i celle: B9\n", err)
 		}
@@ -185,11 +188,8 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 				newAlloc.infernoNr, err = strconv.Atoi(cell)
 			case colInvestor:
 				newAlloc.clientName = cell
-			case colAccType:
-				if strings.ToLower(cell) != "abg" && strings.ToLower(cell) != "pot" {
-					fmt.Println("Account Type må være 'ABG' eller 'Pot', men fant '" + cell + "' i celle: " + cellName)
-				}
-				newAlloc.accType = cell
+			case colBandD:
+				newAlloc.bAndD = strings.TrimSpace(cell)
 			case colQty:
 				qty := strings.ReplaceAll(cell, ",", "")
 				newAlloc.qty, err = strconv.Atoi(qty)
@@ -212,6 +212,8 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 					if err != nil {
 						fmt.Println("Kunne ikke konvertere Rull price\n", err)
 					}
+					newRullAlloc.currency = rullCurrency
+
 					rullAllocations = append(rullAllocations, newRullAlloc)
 				}
 			case colTempQty:
@@ -230,13 +232,15 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 					if err != nil {
 						fmt.Println("Kunne ikke konvertere Rull price\n", err)
 					}
+					newTempAlloc.currency = tempCurrency
+
 					tempAllocations = append(tempAllocations, newTempAlloc)
 				}
 			case colBroker:
 				continue
 			case colFee:
 				if cell != "" {
-					newAlloc.commitmentFee, err = strconv.ParseFloat(cell, 64)
+					newAlloc.commitmentFee, err = strconv.ParseFloat(strings.ReplaceAll(cell, ",", ""), 64)
 					if err != nil {
 						fmt.Println("Kunne ikke konvertere UW fee i celle: "+cellName+"\n", err)
 					}
@@ -258,10 +262,10 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		allocations = append(allocations, newAlloc)
 	}
 
-	// remove all allocations that dont have inferno nr
+	// remove all allocations that have 0 qty
 	var filteredAllocations []Allocation // allocations without empty elements
 	for _, alloc := range allocations {
-		if alloc.infernoNr != 0 {
+		if alloc.qty != 0 {
 			filteredAllocations = append(filteredAllocations, alloc)
 		}
 	}
@@ -296,8 +300,8 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 	// add main allocations
 	for i, allocation := range allocations {
-		// if account type is Pot, do not include
-		if strings.ToLower(strings.TrimSpace(allocation.accType)) == "pot" {
+		// if bAndD is not ABG, do not include
+		if strings.ToLower(strings.TrimSpace(allocation.bAndD)) != "abg" {
 			continue
 		}
 		// insert cell values
@@ -323,6 +327,10 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	}
 	// add rull allocations
 	for i, allocation := range rullAllocations {
+		// if bAndD is not ABG, do not include
+		if strings.ToLower(strings.TrimSpace(allocation.bAndD)) != "abg" {
+			continue
+		}
 		// insert cell values
 		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
 		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
@@ -346,6 +354,10 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	}
 	// add temp allocations
 	for i, allocation := range tempAllocations {
+		// if bAndD is not ABG, do not include
+		if strings.ToLower(strings.TrimSpace(allocation.bAndD)) != "abg" {
+			continue
+		}
 		// insert cell values
 		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
 		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
@@ -413,7 +425,7 @@ func writeFinance(allocations []Allocation, inputPerson string, deal string, pro
 	file.SetCellValue(sheetName, "B2", deal)
 	file.SetCellValue(sheetName, "B3", projectId)
 	file.SetCellValue(sheetName, "B4", allocations[0].isin)
-	file.SetCellValue(sheetName, "B5", allocations[0].tradeDate)
+	file.SetCellValue(sheetName, "B5", allocations[0].tradeDate.Format("2006.01.02"))
 	file.SetCellValue(sheetName, "B6", allocations[0].currency)
 
 	// add allocation rows
