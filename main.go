@@ -3,20 +3,19 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/xuri/excelize/v2"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/xuri/excelize/v2"
 )
 
 type Allocation struct {
-	isin, currency, backOfficeComments, clientName, brokerId, bAndD string
-	qty, infernoNr, smid, book, financeQty                          int
-	tradeDate, valueDate                                            time.Time
-	commitmentFee, price                                            float64
+	isin, currency, backOfficeComments, clientName, brokerId, bAndD, feeCurrency string
+	qty, infernoNr, smid, book, financeQty                                       int
+	tradeDate, valueDate                                                         time.Time
+	commitmentFee, price                                                         float64
 }
 
 func main() {
@@ -164,6 +163,9 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 		}
 		newAlloc.currency = currency
 
+		// commitment fee currency
+		newAlloc.feeCurrency = currency
+
 		// add settlement values
 		newAlloc.book, err = strconv.Atoi(book)
 		if err != nil {
@@ -289,7 +291,7 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 	// add headers
 	headers := []string{"Book", "Counterparty", "Primary Security (GUI)",
-		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee"}
+		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee", "Fee Currency"}
 
 	// filter out all allocations that does not have ABG as bAndD
 	var filteredAllocations []Allocation
@@ -329,6 +331,9 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 		if allocation.commitmentFee != 0 {
 			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
 		}
+
+		// fee currency
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(75)), 2+i), allocation.feeCurrency)
 	}
 	// add rull allocations
 	for i, allocation := range rullAllocations {
@@ -352,6 +357,9 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 		if allocation.commitmentFee != 0 {
 			file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
 		}
+
+		// fee currency
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(75)), 2+i), allocation.feeCurrency)
 	}
 	// add temp allocations
 	for i, allocation := range tempAllocations {
@@ -375,6 +383,9 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 		if allocation.commitmentFee != 0 {
 			file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
 		}
+
+		// fee currency
+		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(75)), 2+i), allocation.feeCurrency)
 	}
 
 	// save file
