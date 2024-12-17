@@ -115,8 +115,8 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 
 	// get corp values
 	isin, err := file.GetCellValue(sheetName, "B2")
-	tempIsin, err := file.GetCellValue(sheetName, "B3")
-	rullIsin, err := file.GetCellValue(sheetName, "B4")
+	rullIsin, err := file.GetCellValue(sheetName, "B3")
+	tempIsin, err := file.GetCellValue(sheetName, "B4")
 	price, err := file.GetCellValue(sheetName, "B5")
 	rullPrice, err := file.GetCellValue(sheetName, "B6")
 	tempPrice, err := file.GetCellValue(sheetName, "B7")
