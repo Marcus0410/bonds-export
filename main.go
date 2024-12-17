@@ -291,7 +291,7 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 	// add headers
 	headers := []string{"Book", "Counterparty", "Primary Security (GUI)",
-		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee", "Fee Currency"}
+		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee"}
 
 	// filter out all allocations that does not have ABG as bAndD
 	var filteredAllocations []Allocation
@@ -329,11 +329,9 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
-			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i),
+				fmt.Sprintf("%f/%s", allocation.commitmentFee, allocation.feeCurrency))
 		}
-
-		// fee currency
-		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(75)), 2+i), allocation.feeCurrency)
 	}
 	// add rull allocations
 	for i, allocation := range rullAllocations {
@@ -355,11 +353,9 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
-			file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i),
+				fmt.Sprintf("%f/%s", allocation.commitmentFee, allocation.feeCurrency))
 		}
-
-		// fee currency
-		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(75)), 2+i), allocation.feeCurrency)
 	}
 	// add temp allocations
 	for i, allocation := range tempAllocations {
@@ -381,11 +377,9 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
-			file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i), allocation.commitmentFee)
+			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i),
+				fmt.Sprintf("%f/%s", allocation.commitmentFee, allocation.feeCurrency))
 		}
-
-		// fee currency
-		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(75)), 2+i), allocation.feeCurrency)
 	}
 
 	// save file
