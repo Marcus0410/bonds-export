@@ -176,6 +176,9 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 			fmt.Println("Kunne ikke konvertere SMID i celle: E3\n", err)
 		}
 
+		// get backoffice comments
+		newAlloc.backOfficeComments = row[colComment]
+
 		// get values from rows
 		for cellIndex, cell := range row {
 			// skip empty cells
@@ -248,7 +251,7 @@ func readInput(inputFilePath string) ([]Allocation, []Allocation, []Allocation, 
 					}
 				}
 			case colComment:
-				newAlloc.backOfficeComments = cell
+				continue // comment is retrieved before this for-loop (to ensure rull and temp get comments aswell)
 			case colFinance:
 				financeQty := strings.ReplaceAll(cell, ",", "")
 				newAlloc.financeQty, err = strconv.Atoi(financeQty)
