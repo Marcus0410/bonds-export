@@ -291,6 +291,15 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	headers := []string{"Book", "Counterparty", "Primary Security (GUI)",
 		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee"}
 
+	// filter out all allocations that does not have ABG as bAndD
+	var filteredAllocations []Allocation
+	for _, alloc := range allocations {
+		if strings.ToLower(alloc.bAndD) == "abg" {
+			filteredAllocations = append(filteredAllocations, alloc)
+		}
+	}
+	allocations = filteredAllocations
+
 	// write column headers
 	for i, header := range headers {
 		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(65+i)), 1), header)
@@ -300,10 +309,6 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 
 	// add main allocations
 	for i, allocation := range allocations {
-		// if bAndD is not ABG, do not include
-		if strings.ToLower(strings.TrimSpace(allocation.bAndD)) != "abg" {
-			continue
-		}
 		// insert cell values
 		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
 		file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
@@ -327,10 +332,6 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	}
 	// add rull allocations
 	for i, allocation := range rullAllocations {
-		// if bAndD is not ABG, do not include
-		if strings.ToLower(strings.TrimSpace(allocation.bAndD)) != "abg" {
-			continue
-		}
 		// insert cell values
 		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
 		file.SetCellValue(rullSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
@@ -354,10 +355,6 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	}
 	// add temp allocations
 	for i, allocation := range tempAllocations {
-		// if bAndD is not ABG, do not include
-		if strings.ToLower(strings.TrimSpace(allocation.bAndD)) != "abg" {
-			continue
-		}
 		// insert cell values
 		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(65)), 2+i), allocation.book)
 		file.SetCellValue(tempSheet, fmt.Sprintf("%s%d", string(rune(66)), 2+i), allocation.infernoNr)
