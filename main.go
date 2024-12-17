@@ -293,14 +293,10 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 	headers := []string{"Book", "Counterparty", "Primary Security (GUI)",
 		"Number of Shares", "Price", "Trade Date", "Value Date", "Settlement Currency", "Back office comments", "Commitment Fee"}
 
-	// filter out all allocations that does not have ABG as bAndD
-	var filteredAllocations []Allocation
-	for _, alloc := range allocations {
-		if strings.ToLower(alloc.bAndD) == "abg" {
-			filteredAllocations = append(filteredAllocations, alloc)
-		}
-	}
-	allocations = filteredAllocations
+	// filter out allocations that does not have ABG as bAndD
+	allocations = filteredBandD(allocations)
+	rullAllocations = filteredBandD(rullAllocations)
+	tempAllocations = filteredBandD(tempAllocations)
 
 	// write column headers
 	for i, header := range headers {
@@ -330,7 +326,7 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
 			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i),
-				fmt.Sprintf("%f/%s", allocation.commitmentFee, allocation.feeCurrency))
+				fmt.Sprintf("%.2f/%s", allocation.commitmentFee, allocation.feeCurrency))
 		}
 	}
 	// add rull allocations
@@ -354,7 +350,7 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
 			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i),
-				fmt.Sprintf("%f/%s", allocation.commitmentFee, allocation.feeCurrency))
+				fmt.Sprintf("%.2f/%s", allocation.commitmentFee, allocation.feeCurrency))
 		}
 	}
 	// add temp allocations
@@ -378,7 +374,7 @@ func writeTradeUpload(allocations []Allocation, rullAllocations []Allocation, te
 		// dont insert 0 if no commitment fee, it should be blank instead
 		if allocation.commitmentFee != 0 {
 			file.SetCellValue(allocationSheet, fmt.Sprintf("%s%d", string(rune(74)), 2+i),
-				fmt.Sprintf("%f/%s", allocation.commitmentFee, allocation.feeCurrency))
+				fmt.Sprintf("%.2f/%s", allocation.commitmentFee, allocation.feeCurrency))
 		}
 	}
 
@@ -446,4 +442,15 @@ func writeFinance(allocations []Allocation, inputPerson string, deal string, pro
 	}
 	file.Save()
 	return err
+}
+
+// returns all allocations with ABG as bAndD
+func filteredBandD(allocations []Allocation) []Allocation {
+	var filteredAllocations []Allocation
+	for _, alloc := range allocations {
+		if strings.ToLower(alloc.bAndD) == "abg" {
+			filteredAllocations = append(filteredAllocations, alloc)
+		}
+	}
+	return filteredAllocations
 }
